@@ -36,6 +36,84 @@ class FrontendHandlerTest(unittest.TestCase):
   def tearDown(self):
     shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
+  def test_calculate_severity_details_v2(self):
+    """Test CVSS v2 severity calculation."""
+    severity = {
+        'type': 'CVSS_V2',
+        'score': 'AV:N/AC:L/Au:N/C:P/I:P/A:P'
+    }
+    score, rating = frontend_handlers.calculate_severity_details(severity)
+    self.assertIsNotNone(score)
+    self.assertIsInstance(score, float)
+    if score is not None:
+        self.assertTrue(abs(score - 7.5) < 0.01)
+    self.assertEqual('HIGH', rating)
+
+  def test_calculate_severity_details_v3(self):
+    """Test CVSS v3 severity calculation."""
+    severity = {
+        'type': 'CVSS_V3',
+        'score': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H'
+    }
+    score, rating = frontend_handlers.calculate_severity_details(severity)
+    self.assertIsNotNone(score)
+    self.assertIsInstance(score, float)
+    if score is not None:
+        self.assertTrue(abs(score - 10.0) < 0.01)
+    self.assertEqual('CRITICAL', rating)
+
+  def test_calculate_severity_details_v4(self):
+    """Test CVSS v4 severity calculation."""
+    severity = {
+        'type': 'CVSS_V4',
+        'score': 'CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H'
+    }
+    score, rating = frontend_handlers.calculate_severity_details(severity)
+    self.assertIsNotNone(score)
+    self.assertIsInstance(score, float)
+    if score is not None:
+        self.assertTrue(abs(score - 9.3) < 0.01)
+    self.assertEqual('CRITICAL', rating)
+
+  def test_calculate_severity_details_missing_data(self):
+    """Test handling of missing severity data."""
+    # Empty dictionary
+    score, rating = frontend_handlers.calculate_severity_details({})
+    self.assertIsNone(score)
+    self.assertIsNone(rating)
+
+    # Missing score
+    severity = {'type': 'CVSS_V3'}
+    score, rating = frontend_handlers.calculate_severity_details(severity)
+    self.assertIsNone(score)
+    self.assertIsNone(rating)
+
+    # Missing type
+    severity = {'score': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H'}
+    score, rating = frontend_handlers.calculate_severity_details(severity)
+    self.assertIsNone(score)
+    self.assertIsNone(rating)
+
+  def test_calculate_severity_details_invalid_data(self):
+    """Test handling of invalid severity data."""
+    # Invalid CVSS string
+    severity = {
+        'type': 'CVSS_V3',
+        'score': 'INVALID_CVSS_STRING'
+    }
+    score, rating = frontend_handlers.calculate_severity_details(severity)
+    self.assertIsNone(score)
+    self.assertIsNone(rating)
+
+    # Invalid version
+    severity = {
+        'type': 'CVSS_V5',  # Non-existent version
+        'score': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H'
+    }
+    score, rating = frontend_handlers.calculate_severity_details(severity)
+    self.assertIsNone(score)
+    self.assertIsNone(rating)
+
   def test_ecosystem_counts(self):
     """Test ecosystem counts aggregates correctly updates."""
     models.Bug(
